@@ -28,8 +28,10 @@ def load_preflight():
 
 
 @pytest.fixture
-def preflight():
+def preflight(monkeypatch):
+    monkeypatch.setenv("SYNAP_PORT", "8000")
     mod = load_preflight()
+    mod.PORT = 8000
     mod.results.clear()
     return mod
 

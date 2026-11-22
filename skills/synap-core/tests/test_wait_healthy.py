@@ -139,7 +139,11 @@ def test_main_exits_2_on_timeout(wait_mod, capsys):
     def fake_time():
         return times.pop(0) if times else 300.0
 
+    running_ps = '[{"Service": "synap", "State": "running", "ExitCode": 0, "Health": "starting"}]'
+
     with patch("time.time", side_effect=fake_time), \
+         patch("time.sleep", return_value=None), \
+         patch.object(wait_mod, "run", return_value=running_ps), \
          patch.object(wait_mod, "health", return_value=(0, "")), \
          patch("sys.argv", ["wait_healthy.py", "--timeout", "10"]):
         with pytest.raises(SystemExit) as exc:
