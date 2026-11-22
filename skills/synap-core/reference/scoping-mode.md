@@ -7,7 +7,7 @@ How do the app's users relate to customers? The human decides; you recommend fro
 | `equals_customer` | a consumer app: each user is their own customer | a user id only. A customer id is refused. |
 | `strict` | a business app: users sit under a customer (an organisation) | a customer id AND a user id. A user id alone is an error. |
 
-The repository ships `config/memory.yml` set to `equals_customer`, and `config/samples/business-app.yml` set to `strict`.
+The repository ships `config/memory.yml` (and `config/samples/consumer-app.yml`) set to `equals_customer`, and `config/samples/business-app.yml` set to `strict`.
 
 ## It cannot be changed once memories exist
 

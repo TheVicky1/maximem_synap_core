@@ -10,7 +10,7 @@ Synap Core is the open-source, self-hosted edition of Maximem Synap's memory eng
 
 - `synap/`: the engine (`cloud/` API, ingestion, retrieval, compaction and the memory browser; `providers/`; `contracts/`; `db/`; `boot/`; `tests/`). Maintained by the Maximem team.
 - `deploy/docker-compose.yml`: the server and its four stores. The API binds to `127.0.0.1:8000`.
-- `config/`: `memory.yml` (the starter memory config) and `samples/business-app.yml`.
+- `config/`: `memory.yml` (the starter memory config) and `samples/` (`business-app.yml` and `consumer-app.yml`).
 - `skills/synap-core/`: the setup skill for coding agents, with `reference/` and `scripts/`.
 - `e2e/`: the end-to-end suite, driven through the real SDK and Docker.
 - `benchmarks/`: LongMemEval results and how to re-run them.

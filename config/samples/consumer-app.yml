@@ -1,0 +1,10 @@
+# Synap Core memory config: a consumer app.
+#
+# Every user is their own customer ("equals_customer"), so your app sends a user id and nothing
+# else. Copy this file over config/memory.yml before you store anything. Changing the mode after
+# memories exist is not supported.
+#
+# Everything else uses the built-in defaults.
+storage_architecture:
+  scoping:
+    user_context_isolation: equals_customer

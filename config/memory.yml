@@ -2,7 +2,8 @@
 #
 # Every user is their own customer ("equals_customer"), so your app sends a user id and nothing
 # else. If your app has customers with users under them, copy samples/business-app.yml over this
-# file instead, before you store anything. Changing the mode after memories exist is not supported.
+# file instead, before you store anything (to return to this setup, use samples/consumer-app.yml).
+# Changing the mode after memories exist is not supported.
 #
 # Everything else uses the built-in defaults. Add settings from the Configuration page when you need
 # them. A mistake in this file stops the server at start and names the line.
