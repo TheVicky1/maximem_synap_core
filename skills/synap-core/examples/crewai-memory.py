@@ -1,19 +1,26 @@
-"""A CrewAI crew that stores findings in Synap Core and recalls them across runs.
+"""A CrewAI crew that stores findings in Synap Core and recalls them across separate runs.
 
-    pip install crewai langchain-openai maximem-synap
+    pip install crewai maximem-synap
     unset SYNAP_API_KEY                  # ensures SDK acts against Core, not Cloud
     export SYNAP_BASE_URL=http://127.0.0.1:8000
     export OPENAI_API_KEY=sk-...
-    python crewai-memory.py
 
-Synap Core runs locally with no API key. On a business (strict) scoping install set
+    # Run 1: intake crew learns client requirements and stores them to Core
+    python skills/synap-core/examples/crewai-memory.py --run 1
+
+    # Run 2: planning crew starts in a new process, recalls memories, and designs architecture
+    python skills/synap-core/examples/crewai-memory.py --run 2
+
+If the server has a token, also export SYNAP_API_TOKEN. On a business (strict) scoping install set
 SYNAP_CUSTOMER_ID=acme so every call carries a customer id; on a consumer install leave it unset
 (a customer id is refused there).
 """
 from __future__ import annotations
 
+import argparse
 import asyncio
 import os
+import sys
 
 from crewai import Agent, Crew, Process, Task
 from maximem_synap import MaximemSynapSDK
@@ -99,23 +106,34 @@ async def run_second_session(sdk: MaximemSynapSDK, user_id: str) -> str:
     return str(result)
 
 
-async def main() -> None:
+async def main(run: int | None = None) -> None:
     user = "client_enterprise_alpha"
     sdk = MaximemSynapSDK()
     await sdk.initialize()
 
     try:
-        print("=== Run 1: Crew gathers and persists client memory to Synap Core ===")
-        intake_summary = await run_first_session(sdk, user)
-        print(f"Summary stored:\n{intake_summary}\n")
+        if run in (1, None):
+            print("=== Run 1: Crew gathers and persists client memory to Synap Core ===")
+            intake_summary = await run_first_session(sdk, user)
+            print(f"Summary stored:\n{intake_summary}\n")
 
-        print("=== Run 2: Crew reads memory back from Synap Core on subsequent run ===")
-        recommendations = await run_second_session(sdk, user)
-        print(f"Personalized Plan based on recalled memory:\n{recommendations}")
+        if run in (2, None):
+            print("=== Run 2: Crew reads memory back from Synap Core across runs ===")
+            recommendations = await run_second_session(sdk, user)
+            print(f"Personalized Plan based on recalled memory:\n{recommendations}")
 
     finally:
         await sdk.shutdown()
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    parser = argparse.ArgumentParser(description="CrewAI cross-run memory with Synap Core")
+    parser.add_argument(
+        "--run",
+        type=int,
+        choices=[1, 2],
+        default=None,
+        help="1: Intake session (stores memories); 2: Planning session (recalls memories). Omit to run both.",
+    )
+    args = parser.parse_args()
+    asyncio.run(main(args.run))
