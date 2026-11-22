@@ -1,6 +1,7 @@
 """A LangChain agent that stores user conversations in Synap Core and retrieves context.
 
     pip install langchain langchain-openai maximem-synap
+    unset SYNAP_API_KEY                  # ensures SDK acts against Core, not Cloud
     export SYNAP_BASE_URL=http://127.0.0.1:8000
     export OPENAI_API_KEY=sk-...
     python langchain-agent.py
@@ -17,6 +18,9 @@ import os
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_openai import ChatOpenAI
 from maximem_synap import MaximemSynapSDK
+
+# A leftover SYNAP_API_KEY makes the SDK act as a Cloud client even with SYNAP_BASE_URL set.
+os.environ.pop("SYNAP_API_KEY", None)
 
 CUSTOMER = {"customer_id": os.environ["SYNAP_CUSTOMER_ID"]} if os.environ.get("SYNAP_CUSTOMER_ID") else {}
 
