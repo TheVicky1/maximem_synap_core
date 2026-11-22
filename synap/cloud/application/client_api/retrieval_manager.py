@@ -9844,22 +9844,33 @@ class RetrievalManager:
         # throwaway RM in the worker.
         effective_client = client_id or instance_id
         effective_customer = customer_id or "global"
-        l2_base = f"{effective_client}:{effective_customer}:{user_id or 'global'}"
-        dropped = self._adjacency_l2.delete_scope(l2_base)
-        if dropped:
-            logger.info(
-                "adjacency_l2_invalidated: key=%s, variants=%d, source=direct",
-                l2_base, dropped,
-            )
-        _l2_dirty_keys.add(l2_base)  # belt-and-suspenders for throwaway RM instances
+        if customer_id and customer_id != "global":
+            l2_base = f"{effective_client}:{effective_customer}:{user_id or 'global'}"
+            dropped = self._adjacency_l2.delete_scope(l2_base)
+            if dropped:
+                logger.info(
+                    "adjacency_l2_invalidated: key=%s, variants=%d, source=direct",
+                    l2_base, dropped,
+                )
+            _l2_dirty_keys.add(l2_base)  # belt-and-suspenders for throwaway RM instances
+            pattern = f"query:{effective_client}:{effective_customer}:*"
+        else:
+            # Client-scope: customer_id is empty or "global". Invalidate the entire
+            # query:{client}:* namespace so user/customer fetches reflect the write (#35).
+            dropped = self._adjacency_l2.delete_scope(effective_client)
+            if dropped:
+                logger.info(
+                    "adjacency_l2_invalidated: key=%s, variants=%d, source=direct",
+                    effective_client, dropped,
+                )
+            _l2_dirty_keys.add(effective_client)
+            pattern = f"query:{effective_client}:*"
 
         if self.cache is None:
             logger.debug("cache_invalidation_skipped: no cache provider")
             return 0
 
         try:
-            # Pattern: query:{client_id}:{customer_id}:*
-            pattern = f"query:{effective_client}:{effective_customer}:*"
             cursor = 0
             deleted = 0
 
