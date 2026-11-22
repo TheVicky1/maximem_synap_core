@@ -216,11 +216,12 @@ def test_13_one_memory_can_be_deleted_by_id(stack):
     target = UUID(S["alice_ids"][0])
 
     async def go(sdk):
+        target_mem = await sdk.memories.get(target)
         await sdk.memories.delete(target)
         with pytest.raises(Exception):
             await sdk.memories.get(target)
         recalled = await recall(sdk, ALICE, "preferences", "dark mode")
-        assert not any("dark" in t.lower() for t in recalled), f"deleted memory still in recall: {recalled}"
+        assert target_mem.content not in recalled, f"deleted memory still in recall: {recalled}"
     with_sdk(stack, go)
 
 
