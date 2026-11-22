@@ -7,13 +7,17 @@
 2. Set up .env in the repository root:
        SYNAP_LLM_PROVIDER=ollama
        SYNAP_LLM_MODEL=llama3.2
-       OLLAMA_BASE_URL=http://host.docker.internal:11434
        OLLAMA_NUM_CTX=16384
        SYNAP_LLM_READ_TIMEOUT_SECONDS=300
 
-   Note for Linux users: Ollama listens on 127.0.0.1 by default, which Docker containers
-   cannot reach directly. Set OLLAMA_HOST=172.17.0.1:11434 (the docker0 bridge) before starting
-   Ollama (see skills/synap-core/reference/model-setup.md).
+   On macOS / Windows (Docker Desktop):
+       OLLAMA_BASE_URL=http://host.docker.internal:11434
+
+   On Linux:
+       OLLAMA_BASE_URL=http://172.17.0.1:11434
+       (Ollama listens on 127.0.0.1 by default, which Docker containers cannot reach.
+       Set OLLAMA_HOST=172.17.0.1:11434 before starting Ollama to match the docker0 bridge;
+       see skills/synap-core/reference/model-setup.md).
 
 3. Start Synap Core:
        docker compose -f deploy/docker-compose.yml up -d
@@ -22,12 +26,14 @@
        pip install maximem-synap
        unset SYNAP_API_KEY          # ensures SDK acts against Core, not Cloud
        export SYNAP_BASE_URL=http://127.0.0.1:8000
-       python ollama-local.py
+       python skills/synap-core/examples/ollama-local.py
 
-Performance note:
-- Tested with llama3.2 (3B): ingestion takes ~15-25 seconds per chunk on Apple Silicon / modern CPU.
-- Tested with qwen2.5 (7B): ingestion takes ~35-50 seconds per chunk.
-- For local models, SYNAP_LLM_READ_TIMEOUT_SECONDS is raised to 300 in .env to prevent timeouts.
+   If the server has a token, also export SYNAP_API_TOKEN. On a business (strict) install set
+   SYNAP_CUSTOMER_ID=acme so every call carries a customer id; on a consumer install leave it unset
+   (a customer id is refused there).
+
+Note:
+- Local models take longer per chunk than hosted APIs; SYNAP_LLM_READ_TIMEOUT_SECONDS is raised to 300 in .env to prevent client timeouts during extraction.
 """
 from __future__ import annotations
 
