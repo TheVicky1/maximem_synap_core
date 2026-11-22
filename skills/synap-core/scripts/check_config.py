@@ -52,7 +52,13 @@ async def main():
         req = urllib.request.Request(args.url + path, headers={"Authorization": f"Bearer {token}"} if token else {})
         return json.load(urllib.request.urlopen(req, timeout=20))
 
-    cfg = get("/browser/api/config")
+    try:
+        cfg = get("/browser/api/config")
+    except Exception as exc:
+        say("ERROR", f"cannot reach {args.url}: {exc}")
+        print(f"RESULT: FAIL cannot reach {args.url}")
+        print("EXIT CODE: 1")
+        sys.exit(1)
     if cfg.get("valid") is not True:
         say("ERROR", "the config is not accepted: " + "; ".join(cfg.get("problems", [])[:2]))
     else:
