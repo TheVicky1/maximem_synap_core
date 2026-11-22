@@ -6,7 +6,7 @@
     export OPENAI_API_KEY=sk-...
     python langchain-agent.py
 
-Synap Core runs locally with no API key. On a business (strict) install set
+If the server has a token, also export SYNAP_API_TOKEN. On a business (strict) install set
 SYNAP_CUSTOMER_ID=acme so every call carries a customer id; on a consumer install leave it unset
 (a customer id is refused there).
 """
