@@ -54,6 +54,15 @@ async def main():
 
     try:
         cfg = get("/browser/api/config")
+    except urllib.error.HTTPError as exc:
+        if exc.code == 401:
+            say("ERROR", f"the server at {args.url} refused the request (HTTP 401): check SYNAP_API_TOKEN in your environment or .env")
+            print("RESULT: FAIL HTTP 401 unauthorized: check SYNAP_API_TOKEN")
+        else:
+            say("ERROR", f"the server at {args.url} answered HTTP {exc.code}: {exc.reason}")
+            print(f"RESULT: FAIL HTTP {exc.code} from {args.url}")
+        print("EXIT CODE: 1")
+        sys.exit(1)
     except Exception as exc:
         say("ERROR", f"cannot reach {args.url}: {exc}")
         print(f"RESULT: FAIL cannot reach {args.url}")

@@ -4,6 +4,7 @@ Covers:
 - load_token() reading SYNAP_API_TOKEN from the environment, falling back to ./.env
 - texts() extraction from context objects
 - Unreachable server handling (clear error message, no traceback)
+- HTTPError handling (HTTP 401 token reminder, HTTP 500 server error)
 - Server config evaluation ([OK], [WARN], [ERROR] and scoping mode)
 - SDK import error handling when maximem-synap is missing
 - Mocked SDK execution for recall verification, user separation, and cleanup
@@ -160,56 +161,54 @@ def test_unreachable_server_fails_with_clear_error_and_no_traceback(run):
     assert "EXIT CODE: 1" in done.stdout
 
 
-def test_invalid_config_reports_error_and_fails(fake_server, run):
+def test_http_401_reports_token_error(fake_server, run):
     url, routes = fake_server
-    routes["/browser/api/config"] = (200, {
-        "valid": False,
-        "problems": ["storage_architecture.scoping: invalid mode", "line 12: unclosed bracket"],
-    })
-    routes["/api/v1/auth/whoami"] = (200, {"user_context_isolation": "equals_customer"})
+    routes["/browser/api/config"] = (401, {"error": "unauthorized"})
 
     done = run("check_config.py", "--url", url)
     assert done.returncode == 1
-    assert "[ERROR] the config is not accepted: storage_architecture.scoping: invalid mode" in done.stdout
-    assert "RESULT: FAIL" in done.stdout
+    assert "Traceback" not in done.stderr
+    assert "[ERROR] the server at" in done.stdout
+    assert "refused the request (HTTP 401): check SYNAP_API_TOKEN" in done.stdout
+    assert "RESULT: FAIL HTTP 401 unauthorized: check SYNAP_API_TOKEN" in done.stdout
     assert "EXIT CODE: 1" in done.stdout
 
 
-def test_starter_config_warns_developer(fake_server, run):
+def test_http_500_reports_server_error(fake_server, run):
     url, routes = fake_server
-    routes["/browser/api/config"] = (200, {
-        "valid": True,
-        "starter": True,
-        "sections": [{"name": "storage_architecture", "settings": 1}],
-    })
-    routes["/api/v1/auth/whoami"] = (200, {"user_context_isolation": "equals_customer"})
+    routes["/browser/api/config"] = (500, {"error": "internal error"})
 
     done = run("check_config.py", "--url", url)
-    assert "[OK] the config is accepted: storage_architecture (1)" in done.stdout
-    assert "[WARN] this is still the starter sample, not a config of your own" in done.stdout
-    assert "[OK] scoping mode: equals_customer" in done.stdout
+    assert done.returncode == 1
+    assert "Traceback" not in done.stderr
+    assert "[ERROR] the server at" in done.stdout
+    assert "answered HTTP 500" in done.stdout
+    assert "RESULT: FAIL HTTP 500 from" in done.stdout
+    assert "EXIT CODE: 1" in done.stdout
 
 
-def test_developer_config_reported_as_ok(fake_server, run):
+def test_missing_sdk_reports_error_and_fails(fake_server, run, tmp_path):
     url, routes = fake_server
     routes["/browser/api/config"] = (200, {
         "valid": True,
         "starter": False,
-        "sections": [{"name": "storage_architecture", "settings": 2}],
+        "sections": [{"name": "storage_architecture", "settings": 1}],
     })
-    routes["/api/v1/auth/whoami"] = (200, {"user_context_isolation": "strict"})
+    routes["/api/v1/auth/whoami"] = (200, {"user_context_isolation": "equals_customer"})
 
-    done = run("check_config.py", "--url", url)
-    assert "[OK] the config is accepted: storage_architecture (2)" in done.stdout
-    assert "[OK] this is the developer's own config" in done.stdout
-    assert "[OK] scoping mode: strict" in done.stdout
+    # Empty PYTHONPATH ensures maximem_synap is not found in subprocess
+    done = run("check_config.py", "--url", url, env={"PYTHONPATH": str(tmp_path)})
+    assert done.returncode == 1
+    assert "[ERROR] the maximem-synap package is not installed in this Python" in done.stdout
+    assert "RESULT: FAIL maximem-synap not installed" in done.stdout
+    assert "EXIT CODE: 1" in done.stdout
 
 
 # =====================================================================
 # Mocked SDK main() tests for recall, user separation, and cleanup
 # =====================================================================
 
-def test_main_passes_when_recall_and_separation_succeed(monkeypatch, capsys):
+def test_main_passes_when_recall_and_separation_succeed(capsys):
     mod = load_check_config()
     mod.lines.clear()
 
@@ -238,13 +237,14 @@ def test_main_passes_when_recall_and_separation_succeed(monkeypatch, capsys):
     mock_sdk.memories.delete = AsyncMock()
 
     async def fake_fetch(user_id=None, **kwargs):
-        if "a" in user_id:
+        if user_id and user_id.endswith("_a"):
             return SimpleNamespace(facts=[SimpleNamespace(content="I am vegetarian")])
         return SimpleNamespace(facts=[SimpleNamespace(content="Priya loves orchids")])
 
     mock_sdk.user.context.fetch = AsyncMock(side_effect=fake_fetch)
 
-    with patch("sys.argv", ["check_config.py", "--url", "http://127.0.0.1:8000"]), \
+    with patch.dict(os.environ, clear=False), \
+         patch("sys.argv", ["check_config.py", "--url", "http://127.0.0.1:8000"]), \
          patch.object(mod, "load_token", return_value=""), \
          patch.dict("sys.modules", {"maximem_synap": MagicMock(MaximemSynapSDK=MagicMock(return_value=mock_sdk))}):
 
@@ -265,7 +265,7 @@ def test_main_passes_when_recall_and_separation_succeed(monkeypatch, capsys):
         assert "EXIT CODE: 0" in captured
 
 
-def test_main_fails_when_user_separation_fails(monkeypatch, capsys):
+def test_main_fails_when_user_separation_fails(capsys):
     mod = load_check_config()
     mod.lines.clear()
 
@@ -285,7 +285,8 @@ def test_main_fails_when_user_separation_fails(monkeypatch, capsys):
 
     mock_sdk.user.context.fetch = AsyncMock(side_effect=fake_fetch)
 
-    with patch("sys.argv", ["check_config.py", "--url", "http://127.0.0.1:8000"]), \
+    with patch.dict(os.environ, clear=False), \
+         patch("sys.argv", ["check_config.py", "--url", "http://127.0.0.1:8000"]), \
          patch.object(mod, "load_token", return_value=""), \
          patch.dict("sys.modules", {"maximem_synap": MagicMock(MaximemSynapSDK=MagicMock(return_value=mock_sdk))}):
 
