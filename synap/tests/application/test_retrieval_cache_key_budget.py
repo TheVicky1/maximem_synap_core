@@ -115,6 +115,12 @@ class TestItDoesNotDisturbTheOtherDimensions:
         real = manager._build_cache_key(_decision(20, search_queries=["what changed"]))
         assert crafted != real
 
+    def test_query_list_with_pipe_delimiter_does_not_collide(self, manager):
+        """search_query=['a|b'] and ['a', 'b'] must produce distinct cache keys (#34)."""
+        pipe_in_single = manager._build_cache_key(_decision(10, search_queries=["a|b"]))
+        split_queries = manager._build_cache_key(_decision(10, search_queries=["a", "b"]))
+        assert pipe_in_single != split_queries
+
 
 class TestTheDeployCost:
     def test_the_default_budget_is_in_the_key_too(self, manager):
