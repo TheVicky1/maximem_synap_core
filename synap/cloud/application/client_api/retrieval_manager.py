@@ -10200,6 +10200,27 @@ class RetrievalManager:
             _l2_dirty_keys.clear()
             self._adjacency_l2.clear()
             logger.info("adjacency_l2_flushed: source=invalidation_resubscribe")
+
+        client_key = str(scope.client_id) if scope.client_id else ""
+        inst_key = str(scope.instance_id) if scope.instance_id else ""
+        if (client_key and client_key in _l2_dirty_keys) or (inst_key and inst_key in _l2_dirty_keys):
+            target_client = client_key if (client_key and client_key in _l2_dirty_keys) else inst_key
+            _l2_dirty_keys.discard(target_client)
+            dropped = self._adjacency_l2.delete_scope(target_client)
+            if dropped:
+                logger.info(
+                    "adjacency_l2_invalidated: key=%s, variants=%d, source=client_dirty_flag",
+                    target_client, dropped,
+                )
+            for _flight_key in [
+                k for k in self._adjacency_inflight
+                if k == target_client or k.startswith(target_client + ":")
+            ]:
+                self._adjacency_inflight.pop(_flight_key, None)
+                logger.info(
+                    "adjacency_inflight_dropped: key=%s, source=client_dirty_flag", _flight_key
+                )
+
         if l2_key in _l2_dirty_keys or legacy_l2_key in _l2_dirty_keys:
             _l2_dirty_keys.discard(l2_key)
             _l2_dirty_keys.discard(legacy_l2_key)

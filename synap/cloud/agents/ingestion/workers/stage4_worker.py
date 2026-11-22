@@ -335,6 +335,11 @@ class Stage4Worker(BaseIngestionWorker):
                         from synap.cloud.application.client_api.retrieval_manager import _l2_dirty_keys
                         l2_key = f"{client_id}:{customer_id}:{user_key}"
                         _l2_dirty_keys.add(l2_key)
+                        if not customer_id or customer_id == "global":
+                            if client_id:
+                                _l2_dirty_keys.add(client_id)
+                            if instance_id:
+                                _l2_dirty_keys.add(instance_id)
                         logger.info(
                             "ingestion_stage4_l2_dirty_flag_set instance_id=%s l2_key=%s",
                             instance_id,
