@@ -187,21 +187,34 @@ def test_http_500_reports_server_error(fake_server, run):
     assert "EXIT CODE: 1" in done.stdout
 
 
-def test_missing_sdk_reports_error_and_fails(fake_server, run, tmp_path):
-    url, routes = fake_server
-    routes["/browser/api/config"] = (200, {
+def test_missing_sdk_reports_error_and_fails(capsys):
+    mod = load_check_config()
+    mod.lines.clear()
+
+    config_resp = {
         "valid": True,
         "starter": False,
         "sections": [{"name": "storage_architecture", "settings": 1}],
-    })
-    routes["/api/v1/auth/whoami"] = (200, {"user_context_isolation": "equals_customer"})
+    }
+    whoami_resp = {"user_context_isolation": "equals_customer"}
 
-    # Empty PYTHONPATH ensures maximem_synap is not found in subprocess
-    done = run("check_config.py", "--url", url, env={"PYTHONPATH": str(tmp_path)})
-    assert done.returncode == 1
-    assert "[ERROR] the maximem-synap package is not installed in this Python" in done.stdout
-    assert "RESULT: FAIL maximem-synap not installed" in done.stdout
-    assert "EXIT CODE: 1" in done.stdout
+    with patch.dict(os.environ, clear=False), \
+         patch("sys.argv", ["check_config.py", "--url", "http://127.0.0.1:8000"]), \
+         patch.object(mod, "load_token", return_value=""), \
+         patch.dict("sys.modules", {"maximem_synap": None}):
+
+        with pytest.raises(SystemExit) as exc:
+            with patch("urllib.request.urlopen") as mock_open:
+                mock_open.side_effect = lambda req, timeout=20: MagicMock(
+                    read=lambda: json.dumps(config_resp if "config" in req.full_url else whoami_resp).encode()
+                )
+                asyncio.run(mod.main())
+
+        assert exc.value.code == 1
+        captured = capsys.readouterr().out
+        assert "[ERROR] the maximem-synap package is not installed in this Python" in captured
+        assert "RESULT: FAIL maximem-synap not installed" in captured
+        assert "EXIT CODE: 1" in captured
 
 
 # =====================================================================
