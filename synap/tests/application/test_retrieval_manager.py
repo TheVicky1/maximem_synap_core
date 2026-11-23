@@ -1571,6 +1571,17 @@ class TestTheL2ConversationContextIsNotServedOnceANewerCompactionExists:
         )
         assert item.content == "the user lives in Lisbon"
 
+    def test_context_item_preserves_context_marker_inside_normal_text(self):
+        """ContextItem must preserve [Context: ...] when it appears inside legitimate text rather than as terminal suffix (#22)."""
+        text = "Notes\n\n[Context: deployment]\nKeep backups."
+        item = ContextItem(
+            item_id="item-legit-1",
+            content=text,
+            context_type="facts",
+            source="vector",
+        )
+        assert item.content == text
+
     @pytest.mark.asyncio
     async def test_fetch_context_strips_internal_entity_context_tags(
         self, mock_cache, mock_scope_resolver, decision

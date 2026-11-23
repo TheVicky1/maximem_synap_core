@@ -1,9 +1,12 @@
 """Context bundle models."""
 
+import re
 from dataclasses import dataclass, field
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timezone
 from enum import Enum
+
+_TERMINAL_CONTEXT_TAG_RE = re.compile(r"\n\n\[Context:[^\]]*\]\s*$")
 
 
 class DegradationLevel(Enum):
@@ -142,8 +145,8 @@ class ContextItem:
     backing_memory_ids: Optional[List[str]] = None
 
     def __post_init__(self):
-        if self.content and "\n\n[Context:" in self.content:
-            self.content = self.content.split("\n\n[Context:", 1)[0]
+        if self.content:
+            self.content = _TERMINAL_CONTEXT_TAG_RE.sub("", self.content)
 
     def to_dict(self) -> Dict[str, Any]:
         return {

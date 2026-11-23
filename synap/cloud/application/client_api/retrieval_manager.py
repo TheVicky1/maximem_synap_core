@@ -6693,7 +6693,7 @@ class RetrievalManager:
                                 continue
                             _seen_item_idx[_rid] = len(items)
                         _raw_content = result.get("content", "")
-                        _clean_content = (_raw_content or "").split("\n\n[Context:", 1)[0]
+                        _clean_content = re.sub(r"\n\n\[Context:[^\]]*\]\s*$", "", _raw_content or "")
                         items.append(ContextItem(
                             item_id=result.get("id", str(uuid.uuid4())),
                             content=_clean_content,
