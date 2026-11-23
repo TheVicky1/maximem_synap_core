@@ -33,13 +33,12 @@
    (a customer id is refused there).
 
 Note:
-- Local models take longer per chunk than hosted APIs; SYNAP_LLM_READ_TIMEOUT_SECONDS is raised to 300 in .env to prevent client timeouts during extraction.
+- Local models take longer per chunk than hosted APIs; SYNAP_LLM_READ_TIMEOUT_SECONDS sets the read timeout for LLM extraction calls (default is 300 seconds).
 """
 from __future__ import annotations
 
 import asyncio
 import os
-import sys
 
 from maximem_synap import MaximemSynapSDK
 
