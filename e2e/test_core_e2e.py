@@ -217,6 +217,8 @@ def test_13_one_memory_can_be_deleted_by_id(stack):
 
     async def go(sdk):
         target_mem = await sdk.memories.get(target)
+        before = await recall(sdk, ALICE, "preferences", "dark mode")
+        assert target_mem.content in before, f"target memory not in initial recall: {before}"
         await sdk.memories.delete(target)
         with pytest.raises(Exception):
             await sdk.memories.get(target)
