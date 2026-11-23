@@ -203,3 +203,21 @@ async def test_a_small_document_still_saves_its_text_under_its_own_id(redis, sco
     await asyncio.sleep(0)
     await asyncio.sleep(0)
     assert storage.saved == [(resp.ingestion_id, "Prefers email.")]
+
+
+def test_conversation_preamble_before_first_turn_is_preserved():
+    """Text before the first turn marker must be preserved when a conversation is split (#32)."""
+    preprocessor = Stage0Preprocessor(max_tokens=50)
+    preamble = "System: The user is Alice, located in Berlin, and prefers English."
+    turn1 = "user: What is the weather in Berlin today?"
+    turn2 = "assistant: It is currently 15 degrees and cloudy in Berlin."
+    turn3 = "user: Thanks! Also remember that I like cycling."
+    turn4 = "assistant: Noted, I will keep your interest in cycling in mind."
+
+    full_conversation = f"{preamble}\n{turn1}\n{turn2}\n{turn3}\n{turn4}"
+
+    chunks = preprocessor._chunk_conversation_by_turns(full_conversation, max_tokens=30)
+    assert len(chunks) > 1, "Must split into multiple chunks"
+    assert any("The user is Alice, located in Berlin" in c for c in chunks)
+    assert any("What is the weather" in c for c in chunks)
+    assert any("I like cycling" in c for c in chunks)
