@@ -6692,9 +6692,11 @@ class RetrievalManager:
                                 _note_query(items[_prev], _owner)
                                 continue
                             _seen_item_idx[_rid] = len(items)
+                        _raw_content = result.get("content", "")
+                        _clean_content = (_raw_content or "").split("\n\n[Context:", 1)[0]
                         items.append(ContextItem(
                             item_id=result.get("id", str(uuid.uuid4())),
-                            content=result.get("content", ""),
+                            content=_clean_content,
                             context_type=meta.get("memory_type", meta.get("context_type", "facts")),
                             source="vector",
                             # similarity stays the store's own number; relevance

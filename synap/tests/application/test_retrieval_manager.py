@@ -1560,3 +1560,48 @@ class TestTheL2ConversationContextIsNotServedOnceANewerCompactionExists:
             filters={"types": ["preferences"]},
         )
         assert conv_ctx is not None and conv_ctx.summary == "CURRENT"
+
+    def test_context_item_strips_internal_entity_context_tag(self):
+        """ContextItem must strip internal [Context: ...] entity tags from content (#22)."""
+        item = ContextItem(
+            item_id="item-ere-1",
+            content="the user lives in Lisbon\n\n[Context: location:Lisbon]",
+            context_type="facts",
+            source="vector",
+        )
+        assert item.content == "the user lives in Lisbon"
+
+    @pytest.mark.asyncio
+    async def test_fetch_context_strips_internal_entity_context_tags(
+        self, mock_cache, mock_scope_resolver, decision
+    ):
+        """Direct vector similarity search results containing ERE entity tags must have the tag stripped (#22)."""
+        mock_cache.get = AsyncMock(return_value=None)
+        mock_vector = _make_vector_provider([
+            {
+                "id": "v-ere-1",
+                "content": "User works at Acme Corp\n\n[Context: organization:Acme Corp]",
+                "score": 0.95,
+                "metadata": {
+                    "memory_type": "facts",
+                    "context_type": "facts",
+                    "confidence": 0.9,
+                    "scope": "user",
+                    "user_id": "user-1",
+                },
+            }
+        ])
+
+        manager = RetrievalManager(
+            scope_resolver=mock_scope_resolver,
+            cache_provider=mock_cache,
+            vector_provider=mock_vector,
+        )
+        manager._get_visibility_allowed_set = AsyncMock(return_value=VISIBILITY_ALL)
+        bundle = await manager.fetch_context(decision)
+
+        assert bundle.item_count > 0
+        items = bundle.items_by_type.get("facts", [])
+        assert any(it.content == "User works at Acme Corp" for it in items)
+        for it in items:
+            assert "[Context:" not in it.content

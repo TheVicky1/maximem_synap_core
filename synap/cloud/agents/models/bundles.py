@@ -141,6 +141,10 @@ class ContextItem:
     graph_kind: Optional[str] = None
     backing_memory_ids: Optional[List[str]] = None
 
+    def __post_init__(self):
+        if self.content and "\n\n[Context:" in self.content:
+            self.content = self.content.split("\n\n[Context:", 1)[0]
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             "item_id": self.item_id,
