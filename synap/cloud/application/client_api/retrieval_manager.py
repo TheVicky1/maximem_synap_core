@@ -9690,7 +9690,11 @@ class RetrievalManager:
         if _chain:
             _skip_suffix += "|chain:" + ",".join(_chain)
 
-        _query_component = "|".join(decision.search_queries) if decision.search_queries else ""
+        _query_component = (
+            json.dumps(list(decision.search_queries), separators=(",", ":"))
+            if decision.search_queries
+            else ""
+        )
 
         cache_key = CacheKeyGenerator.l1_query_key(
             client_id=resolved_client_id,
