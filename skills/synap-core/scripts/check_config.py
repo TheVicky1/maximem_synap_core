@@ -16,6 +16,7 @@ import asyncio
 import json
 import os
 import sys
+import urllib.error
 import urllib.request
 import uuid
 
@@ -52,7 +53,22 @@ async def main():
         req = urllib.request.Request(args.url + path, headers={"Authorization": f"Bearer {token}"} if token else {})
         return json.load(urllib.request.urlopen(req, timeout=20))
 
-    cfg = get("/browser/api/config")
+    try:
+        cfg = get("/browser/api/config")
+    except urllib.error.HTTPError as exc:
+        if exc.code == 401:
+            say("ERROR", f"the server at {args.url} refused the request (HTTP 401): check SYNAP_API_TOKEN in your environment or .env")
+            print("RESULT: FAIL HTTP 401 unauthorized: check SYNAP_API_TOKEN")
+        else:
+            say("ERROR", f"the server at {args.url} answered HTTP {exc.code}: {exc.reason}")
+            print(f"RESULT: FAIL HTTP {exc.code} from {args.url}")
+        print("EXIT CODE: 1")
+        sys.exit(1)
+    except Exception as exc:
+        say("ERROR", f"cannot reach {args.url}: {exc}")
+        print(f"RESULT: FAIL cannot reach {args.url}")
+        print("EXIT CODE: 1")
+        sys.exit(1)
     if cfg.get("valid") is not True:
         say("ERROR", "the config is not accepted: " + "; ".join(cfg.get("problems", [])[:2]))
     else:
