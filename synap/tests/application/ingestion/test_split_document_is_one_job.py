@@ -203,3 +203,40 @@ async def test_a_small_document_still_saves_its_text_under_its_own_id(redis, sco
     await asyncio.sleep(0)
     await asyncio.sleep(0)
     assert storage.saved == [(resp.ingestion_id, "Prefers email.")]
+
+
+def test_single_over_budget_line_is_split_into_chunks():
+    """A document containing a single line exceeding token budget must be split into chunks (#33)."""
+    preprocessor = Stage0Preprocessor(max_tokens=30)
+    single_long_line = "The quick brown fox jumps over the lazy dog. " * 10
+
+    chunks = preprocessor._force_split(single_long_line, max_tokens=30)
+    assert len(chunks) > 1, "Must split single line into multiple chunks"
+    for chunk in chunks:
+        assert preprocessor._counter.count(chunk) <= 30, f"Chunk exceeds max_tokens: {chunk}"
+
+
+def test_process_splits_document_with_single_over_budget_line(scope):
+    """Stage0Preprocessor.preprocess must produce multiple sub-requests for a single over-budget line (#33)."""
+    preprocessor = Stage0Preprocessor(max_tokens=30)
+    single_long_line = "Client prefers remote communication via asynchronous updates. " * 8
+    req = IngestDocumentRequest(content=single_long_line, scope=scope)
+
+    results = preprocessor.preprocess(req)
+    assert len(results) > 1, "Must split single over-budget line into sub-requests"
+    for sub in results:
+        assert "_chunk" in sub.metadata
+        assert sub.metadata["_chunk"]["total_chunks"] == len(results)
+        assert preprocessor._counter.count(sub.content) <= 30
+
+
+def test_process_splits_unbroken_string_over_budget(scope):
+    """A single unbroken token sequence exceeding max_tokens must also be chunked safely (#33)."""
+    preprocessor = Stage0Preprocessor(max_tokens=10)
+    unbroken_string = "a" * 300
+    req = IngestDocumentRequest(content=unbroken_string, scope=scope)
+
+    results = preprocessor.preprocess(req)
+    assert len(results) > 1, "Must split unbroken string into sub-requests"
+    for sub in results:
+        assert preprocessor._counter.count(sub.content) <= 10
