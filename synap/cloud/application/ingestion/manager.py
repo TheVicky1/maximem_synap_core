@@ -381,6 +381,7 @@ class IngestionManager:
                 if existing:
                     return existing
                 document_id = request.document_id or str(uuid4())
+                request.document_id = document_id
                 # The copy of the text is saved once, under the id the caller gets back,
                 # which is also the id an uploaded file's original is saved under. The
                 # chunks do not save a copy of their own.
@@ -471,6 +472,7 @@ class IngestionManager:
             # Generate IDs
             ingestion_id = uuid4()
             document_id = request.document_id or str(uuid4())
+            request.document_id = document_id
             set_current_span_attributes({"synap.ingestion_id": str(ingestion_id)})
             logger.info(
                 "ingestion_ids_allocated request_id=%s ingestion_id=%s document_id=%s",
