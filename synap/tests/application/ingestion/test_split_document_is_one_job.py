@@ -240,3 +240,17 @@ def test_process_splits_unbroken_string_over_budget(scope):
     assert len(results) > 1, "Must split unbroken string into sub-requests"
     for sub in results:
         assert preprocessor._counter.count(sub.content) <= 10
+
+
+def test_process_splits_numeric_space_separated_line_without_exceeding_budget(scope):
+    """Joined word chunks must not exceed token budget when spaces add tokens (#33)."""
+    preprocessor = Stage0Preprocessor(max_tokens=50)
+    # A single line with many space-separated numbers
+    numeric_line = " ".join(["2"] * 500)
+    req = IngestDocumentRequest(content=numeric_line, scope=scope)
+
+    results = preprocessor.preprocess(req)
+    assert len(results) > 1, "Must split numeric line into multiple sub-requests"
+    for sub in results:
+        token_count = preprocessor._counter.count(sub.content)
+        assert token_count <= 50, f"Sub-request exceeds budget: {token_count} tokens"

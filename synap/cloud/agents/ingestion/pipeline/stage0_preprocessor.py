@@ -435,24 +435,19 @@ class Stage0Preprocessor:
         if len(sentences) > 1:
             chunks: List[str] = []
             curr_parts: List[str] = []
-            curr_tokens = 0
             for sent in sentences:
                 if not sent:
                     continue
-                sent_tokens = self._counter.count(sent)
-                if sent_tokens > max_tokens:
+                if self._counter.count(sent) > max_tokens:
                     if curr_parts:
                         chunks.append(" ".join(curr_parts))
                         curr_parts = []
-                        curr_tokens = 0
                     chunks.extend(self._split_long_line(sent, max_tokens))
-                elif curr_tokens + sent_tokens > max_tokens and curr_parts:
+                elif curr_parts and self._counter.count(" ".join(curr_parts + [sent])) > max_tokens:
                     chunks.append(" ".join(curr_parts))
                     curr_parts = [sent]
-                    curr_tokens = sent_tokens
                 else:
                     curr_parts.append(sent)
-                    curr_tokens += sent_tokens
             if curr_parts:
                 chunks.append(" ".join(curr_parts))
             return chunks
@@ -462,22 +457,19 @@ class Stage0Preprocessor:
         if len(words) > 1:
             chunks: List[str] = []
             curr_words: List[str] = []
-            curr_tokens = 0
             for w in words:
-                w_tokens = self._counter.count(w)
-                if w_tokens > max_tokens:
+                if not w:
+                    continue
+                if self._counter.count(w) > max_tokens:
                     if curr_words:
                         chunks.append(" ".join(curr_words))
                         curr_words = []
-                        curr_tokens = 0
                     chunks.extend(self._split_unbroken_string(w, max_tokens))
-                elif curr_tokens + w_tokens > max_tokens and curr_words:
+                elif curr_words and self._counter.count(" ".join(curr_words + [w])) > max_tokens:
                     chunks.append(" ".join(curr_words))
                     curr_words = [w]
-                    curr_tokens = w_tokens
                 else:
                     curr_words.append(w)
-                    curr_tokens += w_tokens
             if curr_words:
                 chunks.append(" ".join(curr_words))
             return chunks
