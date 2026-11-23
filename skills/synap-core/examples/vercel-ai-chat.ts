@@ -19,6 +19,9 @@ import { generateText, CoreMessage } from 'ai';
 import { openai } from '@ai-sdk/openai';
 import { SynapClient } from '@maximem/synap-js-sdk';
 
+// A leftover Cloud API key makes the SDK act as a Cloud client: clear it.
+delete process.env.SYNAP_API_KEY;
+
 const customer = process.env.SYNAP_CUSTOMER_ID ? { customer_id: process.env.SYNAP_CUSTOMER_ID } : {};
 
 async function chatWithMemory(
