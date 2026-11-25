@@ -372,3 +372,26 @@ class TestIngestionManager:
                 user_id="user_1",
                 customer_id="cust_2",
             )
+
+    @pytest.mark.asyncio
+    async def test_ingest_document_populates_generated_document_id_on_queued_request(
+        self, manager, scope
+    ):
+        """When document_id is omitted, manager must allocate a document_id,
+        return it in the IngestResponse, and set it on the queued request so
+        downstream workers persist memories under the same source_document_id (#21)."""
+        manager._queue.enqueue = AsyncMock(wraps=manager._queue.enqueue)
+        request = IngestDocumentRequest(
+            content="User prefers vim keybindings in their editor.",
+            scope=scope,
+            document_id=None,
+        )
+
+        response = await manager.ingest_document(request)
+
+        assert response.document_id is not None
+        assert request.document_id == response.document_id
+
+        manager._queue.enqueue.assert_awaited_once()
+        enqueued_req = manager._queue.enqueue.call_args.kwargs["request"]
+        assert enqueued_req.document_id == response.document_id
