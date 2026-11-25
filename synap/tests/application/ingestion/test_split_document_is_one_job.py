@@ -203,3 +203,41 @@ async def test_a_small_document_still_saves_its_text_under_its_own_id(redis, sco
     await asyncio.sleep(0)
     await asyncio.sleep(0)
     assert storage.saved == [(resp.ingestion_id, "Prefers email.")]
+
+
+def test_conversation_preamble_fits_with_first_turn():
+    """When leading preamble fits with first turn within max_tokens, it bundles into the first chunk (#32)."""
+    preprocessor = Stage0Preprocessor(max_tokens=60)
+    # Preamble without a recognized role prefix (e.g. not User:, Assistant:, System:, etc.)
+    preamble = "Session metadata: Client is Alice from Berlin and prefers asynchronous updates."
+    turn1 = "user: What is the weather in Berlin today?"
+    turn2 = "assistant: It is currently 15 degrees and cloudy in Berlin."
+    turn3 = "user: Thanks! Also remember that I like cycling."
+    turn4 = "assistant: Noted, I will keep your interest in cycling in mind."
+
+    full_conversation = f"{preamble}\n{turn1}\n{turn2}\n{turn3}\n{turn4}"
+
+    chunks = preprocessor._chunk_conversation_by_turns(full_conversation, max_tokens=35)
+    assert len(chunks) > 1, "Must split into multiple chunks"
+    # Preamble should be preserved in the first chunk together with turn1
+    assert "Session metadata: Client is Alice" in chunks[0]
+    assert "What is the weather" in chunks[0]
+    assert any("cycling" in c for c in chunks)
+
+
+def test_conversation_preamble_needs_separate_chunk():
+    """When leading preamble exceeds budget when paired with first turn, it is emitted as its own chunk (#32)."""
+    preprocessor = Stage0Preprocessor(max_tokens=30)
+    # Long preamble that does not fit with the first turn under max_tokens=25
+    preamble = "Session context and historical summary: Client is Alice from Berlin, works as an architect, and has multiple ongoing projects."
+    turn1 = "user: What is the weather in Berlin today?"
+    turn2 = "assistant: It is currently 15 degrees and cloudy in Berlin."
+
+    full_conversation = f"{preamble}\n{turn1}\n{turn2}"
+
+    chunks = preprocessor._chunk_conversation_by_turns(full_conversation, max_tokens=25)
+    assert len(chunks) > 1, "Must split into multiple chunks"
+    # First chunk must contain the preamble
+    assert "Session context and historical summary" in chunks[0]
+    # Subsequent chunk must contain the user query
+    assert any("What is the weather" in c for c in chunks[1:])

@@ -353,7 +353,21 @@ class Stage0Preprocessor:
 
         # Extract turns
         turns: List[str] = []
-        for i, start in enumerate(turn_starts):
+        preamble = content[:turn_starts[0]].strip()
+        if preamble:
+            first_turn_end = turn_starts[1] if len(turn_starts) > 1 else len(content)
+            first_turn = content[turn_starts[0]:first_turn_end].rstrip()
+            if self._counter.count(f"{preamble}\n{first_turn}") <= max_tokens:
+                turns.append(f"{preamble}\n{first_turn}")
+                start_idx = 1
+            else:
+                turns.append(preamble)
+                start_idx = 0
+        else:
+            start_idx = 0
+
+        for i in range(start_idx, len(turn_starts)):
+            start = turn_starts[i]
             end = turn_starts[i + 1] if i + 1 < len(turn_starts) else len(content)
             turns.append(content[start:end].rstrip())
 
