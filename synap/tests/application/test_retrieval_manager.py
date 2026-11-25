@@ -1582,6 +1582,29 @@ class TestTheL2ConversationContextIsNotServedOnceANewerCompactionExists:
         )
         assert item.content == text
 
+    def test_context_item_strips_terminal_tag_with_nested_bracket(self):
+        """ContextItem must strip terminal [Context: ...] tag even when entity name contains ']' (#22)."""
+        item = ContextItem(
+            item_id="item-ere-bracket",
+            content="User uses Acme [v2]\n\n[Context: tool:Acme [v2]]",
+            context_type="facts",
+            source="vector",
+        )
+        assert item.content == "User uses Acme [v2]"
+
+    def test_bundle_item_to_context_item_strips_terminal_tag(self):
+        """_bundle_item_to_context_item in sdk_context.py must return clean content for tagged items (#22)."""
+        from synap.cloud.application.sdk_api.sdk_context import _bundle_item_to_context_item
+
+        item = ContextItem(
+            item_id="item-sdk-1",
+            content="User works at Acme Corp\n\n[Context: organization:Acme Corp]",
+            context_type="facts",
+            source="vector",
+        )
+        sdk_item = _bundle_item_to_context_item(item)
+        assert sdk_item.content == "User works at Acme Corp"
+
     @pytest.mark.asyncio
     async def test_fetch_context_strips_internal_entity_context_tags(
         self, mock_cache, mock_scope_resolver, decision

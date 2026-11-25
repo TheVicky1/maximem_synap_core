@@ -6,7 +6,7 @@ from typing import List, Dict, Any, Optional
 from datetime import datetime, timezone
 from enum import Enum
 
-_TERMINAL_CONTEXT_TAG_RE = re.compile(r"\n\n\[Context:[^\]]*\]\s*$")
+_TERMINAL_CONTEXT_TAG_RE = re.compile(r"\n\n\[Context:[^\n]*\]\s*$")
 
 
 class DegradationLevel(Enum):

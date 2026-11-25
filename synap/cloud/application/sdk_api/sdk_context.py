@@ -1321,9 +1321,7 @@ def _bundle_item_to_context_item(item, reference=None, as_sent=None, query_order
     prefix = date_prefix
     if subject_ordinal and _subject_marker_enabled():
         prefix = f"{date_prefix}[thing {subject_ordinal}] "
-    _raw_content = item.content or ""
-    _raw_content = re.sub(r"\n\n\[Context:[^\]]*\]\s*$", "", _raw_content)
-    content = f"{prefix}{_raw_content}" if prefix else _raw_content
+    content = f"{prefix}{item.content or ''}" if prefix else (item.content or "")
 
     metadata = {
         "scope": item.scope,
